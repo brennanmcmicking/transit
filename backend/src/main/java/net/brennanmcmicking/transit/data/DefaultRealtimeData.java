@@ -18,7 +18,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class DefaultRealtimeData implements RealtimeData {
@@ -49,13 +51,14 @@ public class DefaultRealtimeData implements RealtimeData {
                 .stream()
                 .filter(GtfsRealtime.FeedEntity::hasVehicle)
                 .map(GtfsRealtime.FeedEntity::getVehicle)
-                .filter(it -> it.hasPosition() && it.hasVehicle())
+                .filter(it -> it.hasPosition() && it.hasVehicle() && it.hasTrip())
                 .map(it -> {
                     VehicleDescriptor vehicle = it.getVehicle();
                     Position position = it.getPosition();
+                    GtfsRealtime.TripDescriptor trip = it.getTrip();
                     return Bus.builder()
                             .id(vehicle.getId())
-                            .label(vehicle.getLabel())
+                            .label(trip.getRouteId().split("-")[0])
                             .latitude(position.getLatitude())
                             .longitude(position.getLongitude())
                             .speed(position.getSpeed())
@@ -77,10 +80,15 @@ public class DefaultRealtimeData implements RealtimeData {
                 it -> {
                     GtfsRealtime.TripUpdate tripUpdate = it.getTripUpdate();
                     GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
-                    Instant startTime = LocalDateTime
-                            .parse(trip.getStartDate() + " " + trip.getStartTime(), DATE_TIME_FORMATTER)
-                            .atZone(PACIFIC_TIME)
-                            .toInstant();
+                    Optional<Instant> startTime = Optional.empty();
+                    try {
+                        startTime = Optional.of(LocalDateTime
+                                .parse(trip.getStartDate() + " " + trip.getStartTime(), DATE_TIME_FORMATTER)
+                                .atZone(PACIFIC_TIME)
+                                .toInstant());
+                    } catch (DateTimeParseException ignored) {
+                    }
+
                     List<Trip.StopUpdate> stopUpdates = tripUpdate
                             .getStopTimeUpdateList()
                             .stream()
@@ -96,13 +104,13 @@ public class DefaultRealtimeData implements RealtimeData {
                                     .build()
                             )
                             .toList();
-
                     return Trip.builder()
                             .tripId(trip.getTripId())
                             .routeId(trip.getRouteId())
-                            .startTime(startTime)
+                            .startTime(startTime.orElse(Instant.MAX))
                             .direction(trip.getDirectionId() == 0 ? Direction.UP : Direction.DOWN)
                             .stopUpdates(stopUpdates)
+                            .busHeader("")
                             .build();
                     }
                 )
@@ -112,7 +120,7 @@ public class DefaultRealtimeData implements RealtimeData {
     @Override
     public List<Stop> getStops() {
         try {
-            URL url = new URL("https://bct.tmix.se/Tmix.Cap.TdExport.WebApi/gtfs/?operatorIds=48");
+            URL url = new URL("https://bct.tmix.se/gtfs-realtime/alerts.pb?operatorIds=48");
             GtfsRealtime.FeedMessage fm = GtfsRealtime.FeedMessage.parseFrom(url.openStream());
             LOG.info(new ObjectMapper().writeValueAsString(fm));
         } catch (MalformedURLException ex) {

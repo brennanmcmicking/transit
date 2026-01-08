@@ -1,0 +1,7 @@
+.bus_marker {
+    background: black;
+    color: white;
+    border-radius: 99em;
+    /* aspect-ratio: 1 / 1; */
+    /* transform: translateX(50%); */
+}

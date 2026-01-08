@@ -14,6 +14,7 @@ public class Trip {
     private final Instant startTime;
     private final String routeId;
     private final Direction direction;
+    private final String busHeader;
     private final List<StopUpdate> stopUpdates;
 
     @Getter
