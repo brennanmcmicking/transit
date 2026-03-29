@@ -1,10 +1,9 @@
-.bus_marker {
-    background: black;
-    color: white;
+.user_marker {
+    background: #337ccc;
+    border: 1px solid #accaea;
     border-radius: 99em;
     aspect-ratio: 1 / 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
 }

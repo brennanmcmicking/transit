@@ -8,10 +8,8 @@ import lombok.Getter;
 public class Stop {
     private String id;
     private String name;
-    private String site;
     private Float latitude;
     private Float longitude;
-    private String sysCode;
-    private String system;
-    private String municipality;
+    private Boolean wheelchair;
+    private String code;
 }

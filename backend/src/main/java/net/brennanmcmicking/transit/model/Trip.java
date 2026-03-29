@@ -2,7 +2,6 @@ package net.brennanmcmicking.transit.model;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
 import java.util.List;
@@ -13,7 +12,7 @@ public class Trip {
     private final String tripId;
     private final Instant startTime;
     private final String routeId;
-    private final Direction direction;
+    private final Integer direction;
     private final String busHeader;
     private final List<StopUpdate> stopUpdates;
 
@@ -21,7 +20,7 @@ public class Trip {
     @Builder
     public static class StopUpdate {
         private final Integer stopSequence;
-        private final String stopId;
+        private final Stop stop;
 
         private final Instant arrival;
         private final Integer arrivalDelay;

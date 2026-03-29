@@ -2,30 +2,40 @@ package net.brennanmcmicking.transit.model;
 
 import lombok.Getter;
 import lombok.ToString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 
 @Getter
 @ToString
 public class Departure {
-    private final Instant departureTime;
-    private final String routeId;
-    private final String busHeader;
-    private final String stopId;
+    private static final Logger LOG = LoggerFactory.getLogger(Departure.class);
 
-    private Departure(Instant departureTime, String routeId, String busHeading, String stopId) {
+    private final Instant departureTime;
+    private final Route route;
+    private final Integer direction;
+    private final String tripId;
+    private final String busHeader;
+    private final Stop stop;
+
+    private Departure(Instant departureTime, Route route, Integer direction, String tripId, String busHeading, Stop stop) {
         this.departureTime = departureTime;
-        this.routeId = routeId;
+        this.route = route;
+        this.direction = direction;
+        this.tripId = tripId;
         this.busHeader = busHeading;
-        this.stopId = stopId;
+        this.stop = stop;
     }
 
-    public static Departure fromStopUpdate(Trip.StopUpdate stopUpdate, Trip trip) {
+    public static Departure fromStopUpdate(Trip.StopUpdate stopUpdate, Route route, Trip trip) {
         return new Departure(
                 stopUpdate.getArrival().plusSeconds(stopUpdate.getArrivalDelay()),
-                trip.getRouteId() + ":" + trip.getDirection(),
+                route,
+                trip.getDirection(),
+                trip.getTripId(),
                 trip.getBusHeader(),
-                stopUpdate.getStopId()
+                stopUpdate.getStop()
         );
     }
 }

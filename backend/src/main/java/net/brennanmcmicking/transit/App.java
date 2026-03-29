@@ -1,9 +1,6 @@
 package net.brennanmcmicking.transit;
 
-import net.brennanmcmicking.transit.data.DefaultRealtimeData;
-import net.brennanmcmicking.transit.data.DefaultStopData;
-import net.brennanmcmicking.transit.data.RealtimeData;
-import net.brennanmcmicking.transit.data.StopData;
+import net.brennanmcmicking.transit.data.*;
 import net.brennanmcmicking.transit.server.TransitResource;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
@@ -18,15 +15,9 @@ import java.util.Set;
 
 public class App {
     public static void main(String[] args) throws Exception {
-        RealtimeData realtimeData = new DefaultRealtimeData();
-        StopData stopData = new DefaultStopData();
-        TransitReader reader = new DefaultTransitReader(realtimeData, stopData);
-//        System.out.println(data
-//                .getBusses()
-//                .stream()
-//                .map(Bus::toString)
-//                .collect(Collectors.joining("\n"))
-//        );
+        StaticData staticData = new DefaultStaticData();
+        RealtimeData realtimeData = new DefaultRealtimeData(staticData);
+        TransitReader reader = new DefaultTransitReader(realtimeData, staticData);
 
         Server server = new Server(8080);
 

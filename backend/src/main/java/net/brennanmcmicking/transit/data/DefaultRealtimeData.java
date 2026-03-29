@@ -1,17 +1,14 @@
 package net.brennanmcmicking.transit.data;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.VehicleDescriptor;
 import com.google.transit.realtime.GtfsRealtime.Position;
-import net.brennanmcmicking.transit.model.Bus;
-import net.brennanmcmicking.transit.model.Direction;
-import net.brennanmcmicking.transit.model.Stop;
-import net.brennanmcmicking.transit.model.Trip;
+import net.brennanmcmicking.transit.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Instant;
@@ -20,8 +17,12 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class DefaultRealtimeData implements RealtimeData {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultRealtimeData.class);
@@ -38,12 +39,17 @@ public class DefaultRealtimeData implements RealtimeData {
     GtfsRealtime.FeedMessage lastTripUpdateMessage;
     Instant lastTripUpdateRefresh = Instant.EPOCH;
 
-    public DefaultRealtimeData() {
+    private final StaticData staticData;
+
+    public DefaultRealtimeData(StaticData staticData) {
+        refreshBusses();
+        refreshTripUpdates();
+        this.staticData = staticData;
     }
 
     @Override
     public List<Bus> getBusses() {
-        if (isCacheExpired(lastBusFeedRefresh)) {
+        if (isCacheExpired(lastBusFeedRefresh, 60L)) {
             refreshBusses();
         }
 
@@ -69,11 +75,10 @@ public class DefaultRealtimeData implements RealtimeData {
 
     @Override
     public List<Trip> getTripUpdates() {
-        if (isCacheExpired(lastTripUpdateRefresh)) {
+        if (isCacheExpired(lastTripUpdateRefresh, 60L)) {
             refreshTripUpdates();
         }
 
-        LOG.info("{}", lastTripUpdateMessage.getEntityList().stream().findFirst().orElseThrow());
         return lastTripUpdateMessage.getEntityList().stream()
                 .filter(GtfsRealtime.FeedEntity::hasTripUpdate)
                 .map(
@@ -94,7 +99,7 @@ public class DefaultRealtimeData implements RealtimeData {
                             .stream()
                             .map(stopTimeUpdate -> Trip.StopUpdate.builder()
                                     .stopSequence(stopTimeUpdate.getStopSequence())
-                                    .stopId(stopTimeUpdate.getStopId())
+                                    .stop(staticData.getStop(stopTimeUpdate.getStopId()).orElseThrow())
                                     .arrival(Instant.ofEpochSecond(stopTimeUpdate.getArrival().getTime()))
                                     .arrivalDelay(stopTimeUpdate.getArrival().getDelay())
                                     .arrivalUncertainty(stopTimeUpdate.getArrival().getUncertainty())
@@ -104,41 +109,31 @@ public class DefaultRealtimeData implements RealtimeData {
                                     .build()
                             )
                             .toList();
+
+                    TripMetadata tripMetadata = staticData.getTripMetadata(trip.getTripId()).orElseThrow();
+
                     return Trip.builder()
                             .tripId(trip.getTripId())
                             .routeId(trip.getRouteId())
                             .startTime(startTime.orElse(Instant.MAX))
-                            .direction(trip.getDirectionId() == 0 ? Direction.UP : Direction.DOWN)
+                            .direction(trip.getDirectionId())
                             .stopUpdates(stopUpdates)
-                            .busHeader("")
+                            .busHeader(tripMetadata.getTripHeadsign())
                             .build();
                     }
                 )
                 .toList();
     }
 
-    @Override
-    public List<Stop> getStops() {
-        try {
-            URL url = new URL("https://bct.tmix.se/gtfs-realtime/alerts.pb?operatorIds=48");
-            GtfsRealtime.FeedMessage fm = GtfsRealtime.FeedMessage.parseFrom(url.openStream());
-            LOG.info(new ObjectMapper().writeValueAsString(fm));
-        } catch (MalformedURLException ex) {
-            throw new RuntimeException("Malforumed URL used in DefaultRealtimeData, realtime stop data will not be loadable", ex);
-        } catch (IOException ex) {
-            LOG.error("Temporarily failed to refresh real-time stop data", ex);
-        }
-
-        return List.of();
-    }
-
     void refreshBusses() {
         synchronized (busFeedMutex) {
-            if (isCacheExpired(lastBusFeedRefresh)) {
+            if (isCacheExpired(lastBusFeedRefresh, 60L)) {
                 try {
                     URL url = new URL("https://bct.tmix.se/gtfs-realtime/vehicleupdates.pb?operatorIds=48");
-                    lastBusFeedMessage = GtfsRealtime.FeedMessage.parseFrom(url.openStream());
-                    lastBusFeedRefresh = Instant.now();
+                    try (InputStream stream = url.openStream()) {
+                        lastBusFeedMessage = GtfsRealtime.FeedMessage.parseFrom(stream);
+                        lastBusFeedRefresh = Instant.now();
+                    }
                 } catch (MalformedURLException ex) {
                     throw new RuntimeException("Malformed URL used in DefaultRealtimeData, realtime bus data will not be loadable", ex);
                 } catch (IOException ex) {
@@ -150,11 +145,13 @@ public class DefaultRealtimeData implements RealtimeData {
 
     void refreshTripUpdates() {
         synchronized (tripUpdateMutex) {
-            if (isCacheExpired(lastTripUpdateRefresh)) {
+            if (isCacheExpired(lastTripUpdateRefresh, 60L)) {
                 try {
                     URL url = new URL("https://bct.tmix.se/gtfs-realtime/tripupdates.pb?operatorIds=48");
-                    lastTripUpdateMessage = GtfsRealtime.FeedMessage.parseFrom(url.openStream());
-                    lastTripUpdateRefresh = Instant.now();
+                    try (InputStream stream = url.openStream()) {
+                        lastTripUpdateMessage = GtfsRealtime.FeedMessage.parseFrom(stream);
+                        lastTripUpdateRefresh = Instant.now();
+                    }
                 } catch (MalformedURLException ex) {
                     throw new RuntimeException("Malformed URL used in DefaultRealtimeData, realtime bus data will not be loadable", ex);
                 } catch (IOException ex) {
@@ -164,7 +161,7 @@ public class DefaultRealtimeData implements RealtimeData {
         }
     }
 
-    private static boolean isCacheExpired(Instant instant) {
-        return instant.isBefore(Instant.now().minusSeconds(60));
+    private static boolean isCacheExpired(Instant lastRefresh, Long expirationSeconds) {
+        return lastRefresh.isBefore(Instant.now().minusSeconds(expirationSeconds));
     }
 }

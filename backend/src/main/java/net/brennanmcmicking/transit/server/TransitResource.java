@@ -7,6 +7,8 @@ import jakarta.ws.rs.QueryParam;
 import net.brennanmcmicking.transit.TransitReader;
 import net.brennanmcmicking.transit.model.Bus;
 import net.brennanmcmicking.transit.model.Departure;
+import net.brennanmcmicking.transit.model.DepartureAndDistance;
+import net.brennanmcmicking.transit.model.Stop;
 
 import java.util.List;
 
@@ -30,7 +32,7 @@ public class TransitResource {
     // a list of nearby stops with the next departing bus
     @GET
     @Path("/nearby-departures")
-    public List<Departure> getNearbyDepartures(
+    public List<DepartureAndDistance> getNearbyDepartures(
             @QueryParam("latitude") Float latidude,
             @QueryParam("longitude") Float longitude,
             @QueryParam("maxDistanceKm") Double maxDistanceKm
@@ -47,11 +49,18 @@ public class TransitResource {
     }
 
     @GET
-    @Path("/departures-for-stop-and-route")
+    @Path("/departures-for-route")
     public List<Departure> getDeparturesForStopAndRoute(
             @QueryParam("stopId") String stopId,
-            @QueryParam("routeId") String routeId
+            @QueryParam("routeId") String routeId,
+            @QueryParam("direction") Integer direction
     ) {
-        return reader.getDeparturesForStopAndRoute(stopId, routeId);
+        return reader.getDeparturesForStopRouteDirection(stopId, routeId, direction);
+    }
+
+    @GET
+    @Path("/stops")
+    public List<Stop> getStops() {
+        return reader.getAllStops();
     }
 }

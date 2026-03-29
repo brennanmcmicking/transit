@@ -1,14 +1,14 @@
 .button {
     border-radius: 8px;
-    background: #e0e0e0;
+    background: #cf9230;
     box-shadow:
         inset 1px 1px 1px #ffffff,
-        5px 5px 5px #00000088;
-    border: none;
+        5px 5px 5px #604416;
+    border: 1px solid #604416;
     padding: 12px;
     color: black;
 }
 
 .button:active {
-    background: #d0d5d5;
+    background: #604416;
 }

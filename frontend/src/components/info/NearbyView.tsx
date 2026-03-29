@@ -1,29 +1,37 @@
 import { useEffect, useState } from "react";
-import type { Departure } from "../../data";
-import { Button } from "../system/Button";
+import type { DepartureAndDistance } from "../../data";
+import { useClient } from "../../util/client";
+import { DepartureCard } from "./DepartureCard";
+import { Ellipsis } from "lucide-react";
+import { Flex } from "../containers/Flex";
 
 interface NearbyViewProps {
     location: GeolocationPosition
 }
 
 export function NearbyView(props: NearbyViewProps) {
-    const [nearby, setNearby] = useState<Departure[]>()
+    const [nearby, setNearby] = useState<DepartureAndDistance[]>()
+    const client = useClient()
 
     useEffect(() => {
-        fetch(`http://localhost:8080/v1/nearby-departures?latitude=${props.location.coords.latitude}&longitude=${props.location.coords.longitude}&maxDistanceKm=2`)
-            .then(response => response.json())
+        client
+            .getNearbyDepartures(
+                props.location.coords.latitude,
+                props.location.coords.longitude,
+                2
+            )
             .then(setNearby)
     }, [props.location]);
 
     return <div style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '4px',
         width: '100%',
         pointerEvents: 'all',
+        overflow: 'scroll',
+        height: '100%',
     }}>
-        {nearby?.map(departure =>
-            <Button onClick={() => { }}>{departure.routeId} {departure.stopId} {departure.departureTime}</Button>
-        )}
+        {nearby?.map(departure => <DepartureCard departure={departure.departure} distanceKm={departure.distance} />)}
+        {!!!nearby && <Flex align="center" justify="center"><Ellipsis /></Flex>}
     </div>
 }

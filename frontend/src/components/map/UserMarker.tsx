@@ -2,30 +2,30 @@ import { divIcon, type LatLngExpression } from "leaflet"
 import { useId, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import { Marker } from "react-leaflet"
-import css from "./BusMarker.module.css"
+import css from "./UserMarker.module.css"
 
 
-interface BusMarkerProps {
-    position: LatLngExpression
-    route: string
+interface UserMarkerProps {
+    position: GeolocationPosition
 }
 
-export function BusMarker(props: BusMarkerProps) {
+export function UserMarker(props: UserMarkerProps) {
+    const pos = [props.position.coords.latitude, props.position.coords.longitude] as LatLngExpression;
     const id = useId()
     const icon = useMemo(() => divIcon({
         html: `<div id="${id}"></div>`,
         className: '',
-        iconSize: [32, 32],
-        iconAnchor: [0, 8],
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
     }), [id])
 
     const [markerRendered, setMarkerRendered] = useState(false)
 
     const target = document.getElementById(id)
-    const content = <div className={css.bus_marker}>{props.route}</div>
+    const content = <div className={css.user_marker}></div>
 
     return <>
-        <Marker position={props.position} icon={icon}
+        <Marker position={pos} icon={icon}
             eventHandlers={{
                 add: () => setMarkerRendered(true),
                 remove: () => setMarkerRendered(false),

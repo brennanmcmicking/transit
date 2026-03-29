@@ -8,21 +8,36 @@ export interface Bus {
     speed: number
 }
 
-export interface Departure {
-    departureTime: number
-    routeId: string
-    stopId: string
-}
-
 export interface Stop {
     id: string
     name: string
-    site: string
     latitude: number
     longitude: number
-    sysCode: string
-    system: string
-    municipality: string
+    wheelchair: boolean
+    code: string
+}
+
+export interface Route {
+    id: string
+    shortName: string
+    longName: string
+    type: number
+    colorHex: string
+    textColorHex: string
+}
+
+export interface Departure {
+    departureTime: number
+    route: Route
+    direction: number
+    tripId: string
+    busHeader: string
+    stop: Stop
+}
+
+export interface DepartureAndDistance {
+    departure: Departure
+    distance: number
 }
 
 export interface StopUpdate {
