@@ -1,12 +1,14 @@
 package net.brennanmcmicking.transit;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import net.brennanmcmicking.transit.data.*;
 import net.brennanmcmicking.transit.server.TransitResource;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
-import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.CrossOriginHandler;
+import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
@@ -34,7 +36,9 @@ public class App {
 
         ResourceConfig resourceConfig = new ResourceConfig();
         TransitResource transitResource = new TransitResource(reader);
-        resourceConfig.register(transitResource);
+        resourceConfig
+                .register(transitResource)
+                .register(new JacksonJsonProvider(new ObjectMapper().registerModule(new JavaTimeModule())));
 
         ServletHolder servletHolder = new ServletHolder(new ServletContainer(resourceConfig));
         context.addServlet(servletHolder, "/*");

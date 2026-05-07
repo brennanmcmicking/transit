@@ -15,11 +15,13 @@
 
 .route_column {
     width: 25%;
+    padding: 10px;
     font-family: "LedCounter";
 }
 
 .route_number {
     font-size: 48px;
+    line-height: 48px;
 }
 
 .info_column {

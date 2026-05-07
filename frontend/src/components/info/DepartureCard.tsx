@@ -1,9 +1,8 @@
-import { ArrowLeft, ArrowRight, SquareArrowLeft, SquareArrowRight } from "lucide-react"
-import type { Departure, DepartureAndDistance } from "../../data"
+import { SquareArrowLeft, SquareArrowRight } from "lucide-react"
+import type { Departure } from "../../data"
 import { useControlPane } from "../../providers/ControlPaneProvider"
 import { minutesFromEpoch } from "../../util/time"
 import { Flex } from "../containers/Flex"
-import { Button } from "../system/Button"
 import css from "./DepartureCard.module.css"
 
 interface DepartureCardProps {
@@ -12,11 +11,13 @@ interface DepartureCardProps {
 }
 
 export function DepartureCard(props: DepartureCardProps) {
-    const [controlPane, setControlPane] = useControlPane()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { viewStateHook } = useControlPane()
+    const setControlPane = viewStateHook[1]
 
     const departure = props.departure
     const distance = props.distanceKm
-    console.log(`departure.direction=${departure.direction}, departure.routeId=${departure.route.id}`)
+    // console.log(`departure.direction=${departure.direction}, departure=${JSON.stringify(departure.route)}`)
 
     const minutes = minutesFromEpoch(departure.departureTime)
     return <div
@@ -32,15 +33,15 @@ export function DepartureCard(props: DepartureCardProps) {
         key={`${departure.route.id}:${departure.stop.id}:${departure.departureTime}`}
     >
         <Flex className={css.card_container}>
-            <Flex className={css.route_column} justify="center" align="center">
+            <Flex className={css.route_column} justify="center" align="center" direction="column">
                 <div className={css.route_number}>{departure.route.id.split('-')[0]}</div>
+                <div style={{ aspectRatio: '1/1', height: '24px' }}>
+                    {departure.direction === 0 ? <SquareArrowRight /> : <SquareArrowLeft />}
+                </div>
             </Flex>
             <Flex direction="column" className={css.info_column} justify="center">
                 <Flex gap="2px">
-                    {/* <div style={{ aspectRatio: '1/1', height: '24px' }}>
-                        {departure.direction === 0 ? <SquareArrowRight /> : <SquareArrowLeft />}
-                    </div> */}
-                    <div style={{ fontSize: '15px', textWrap: 'nowrap' }}>{departure.busHeader}</div>
+                    <div style={{ fontSize: '15px' }}>{departure.busHeader}</div>
                 </Flex>
                 <Flex justify="space-between">
                     <div style={{ fontSize: '10px' }}>{departure.stop.name}</div>
@@ -56,7 +57,5 @@ export function DepartureCard(props: DepartureCardProps) {
                 <div style={{ fontSize: '12px' }}>{minutes === 1 ? 'minute' : 'minutes'}</div>
             </Flex>
         </Flex>
-
-
     </div >
 }

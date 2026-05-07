@@ -19,6 +19,7 @@ public class DefaultTransitReader implements TransitReader {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultTransitReader.class);
 
     private static final Double DEFAULT_MAX_DISTANCE_KM = 3.0;
+    private static final SortBy DEFAULT_SORT_BY = SortBy.TIME;
 
     private final RealtimeData realtimeData;
     private final StaticData staticData;
@@ -39,47 +40,40 @@ public class DefaultTransitReader implements TransitReader {
     // filter down to trips which have a future departure within maxDistanceKm
     // optionally filter down to soonest upcoming trip sorted by route
     @Override
-    public List<DepartureAndDistance> getNearbyDepartures(Float latitude, Float longitude, Double maxDistanceKm) {
+    public List<DepartureAndDistance> getNearbyDepartures(Float latitude, Float longitude, Double maxDistanceKm, SortBy sortByRaw) {
         LOG.info("getNearby called with location={},{}; maxDistance={}", latitude, longitude, maxDistanceKm);
         Objects.requireNonNull(latitude, "latitude cannot be null");
         Objects.requireNonNull(longitude, "longitude cannot be null");
         final double maxDistance = Objects.isNull(maxDistanceKm) ? DEFAULT_MAX_DISTANCE_KM : maxDistanceKm;
+        final SortBy sortBy = Objects.isNull(sortByRaw) ? DEFAULT_SORT_BY : sortByRaw;
         return realtimeData.getTripUpdates()
                 .stream()
                 .map(trip -> {
-                    // find future departure stops
                     Instant now = Instant.now();
                     return trip
                             .getStopUpdates()
                             .stream()
                             .filter(stopUpdate -> now.isBefore(stopUpdate.getArrival()))
                             .map(stopUpdate -> Departure.fromStopUpdate(stopUpdate, staticData.getRoute(trip.getRouteId()).orElseThrow(), trip))
-                            .map(departure -> {
-//                                Optional<Stop> stopOptional = stopData.getStop(departure.getStop());
-//                                if (stopOptional.isEmpty()) {
-//                                    LOG.warn("Could not get stop from stopId={} for departure={}", departure.getStopId(), departure);
-//                                    return DepartureAndDistance.builder().departure(departure).distance(Double.MAX_VALUE).build();
-//                                }
-//                                Stop stop = stopOptional.get();
-                                Stop stop = departure.getStop();
-                                LatLng stopPosition = new LatLng(stop.getLatitude(), stop.getLongitude());
-                                LatLng userPosition = new LatLng(latitude, longitude);
-                                double distanceKm = Precision.round(LatLngTool.distance(stopPosition, userPosition, LengthUnit.KILOMETER), 2);
-                                return DepartureAndDistance.builder().departure(departure).distance(distanceKm).build();
-                            })
+                            .map(departure -> addDistance(departure, latitude, longitude))
                             .min(Comparator.comparing(DepartureAndDistance::getDistance))
                             .filter(departureAndDistance -> departureAndDistance.getDistance() < maxDistance);
                 })
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-//                .map(DepartureAndDistance::getDeparture)
-                .sorted(Comparator.comparing(DepartureAndDistance::getDepartureTime))
+                .sorted(sortBy.getDepartureAndDistanceComparator())
                 .filter(distinctByKey(DepartureAndDistance::getKey))
                 .toList();
     }
 
     @Override
-    public List<Departure> getDeparturesForStopRouteDirection(String stopId, String routeId, Integer direction) {
+    public List<DepartureAndDistance> getDeparturesForStopRouteDirection(
+            String routeId,
+            Integer direction,
+            String stopId,
+            Float latitude,
+            Float longitude
+    ) {
         return realtimeData
                 .getTripUpdates()
                 .stream()
@@ -91,6 +85,8 @@ public class DefaultTransitReader implements TransitReader {
                                 staticData.getRoute(trip.getRouteId()).orElseThrow(),
                                 trip)))
                 .filter(it -> Objects.equals(it.getStop().getId(), stopId))
+                .map(departure -> addDistance(departure, latitude, longitude))
+                .sorted(Comparator.comparing(DepartureAndDistance::getDepartureTime))
                 .toList();
     }
 
@@ -107,7 +103,23 @@ public class DefaultTransitReader implements TransitReader {
                         .map(su -> Departure.fromStopUpdate(su, staticData.getRoute(trip.getRouteId()).orElseThrow(), trip)))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
+                .sorted(Comparator.comparing(Departure::getDepartureTime))
                 .toList();
+    }
+
+    @Override
+    public List<Departure> getAllDeparturesByStopPosition(Float latitude, Float longitude) {
+        LatLng stopPos = new LatLng(latitude, longitude);
+        Stop stop = staticData.getAllStops()
+                .stream()
+                .min(Comparator.comparing(o -> LatLngTool.distance(
+                        new LatLng(o.getLatitude(), o.getLongitude()),
+                        stopPos,
+                        LengthUnit.KILOMETER
+                )))
+                .orElseThrow();
+        LOG.info("found nearest stopId={}", stop.getId());
+        return getAllDeparturesByStopId(stop.getId());
     }
 
     @Override
@@ -115,14 +127,16 @@ public class DefaultTransitReader implements TransitReader {
         return staticData.getAllStops();
     }
 
-    private Optional<Bus> getBusById(String busId) {
-        return realtimeData.getBusses().stream()
-                .filter(bus -> Objects.equals(bus.getId(), busId))
-                .findFirst();
-    }
-
     public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
         Set<Object> seen = new HashSet<>();
         return t -> seen.add(keyExtractor.apply(t));
+    }
+
+    private static DepartureAndDistance addDistance(Departure departure, Float latitude, Float longitude) {
+        Stop stop = departure.getStop();
+        LatLng stopPosition = new LatLng(stop.getLatitude(), stop.getLongitude());
+        LatLng userPosition = new LatLng(latitude, longitude);
+        double distanceKm = Precision.round(LatLngTool.distance(stopPosition, userPosition, LengthUnit.KILOMETER), 2);
+        return DepartureAndDistance.builder().departure(departure).distance(distanceKm).build();
     }
 }

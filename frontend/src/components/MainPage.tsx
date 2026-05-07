@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Map } from './map/Map'
 import { NearbyView } from './info/NearbyView'
-import { Box } from './system/Box'
 import { type Stop, type Bus } from '../data'
 import { useClient } from '../util/client'
 import { Flex } from './containers/Flex'
 import { useControlPane } from '../providers/ControlPaneProvider'
 import css from './MainPage.module.css'
 import { StopView } from './info/StopView'
-import { ArrowLeftSquareIcon, SquareArrowLeftIcon } from 'lucide-react'
 import { RouteView } from './info/RouteView'
+import { BackButton } from './BackButton'
+import { SortButton } from './SortButton'
 
 
 interface MainPageProps {
@@ -19,20 +19,22 @@ interface MainPageProps {
 export function MainPage(props: MainPageProps) {
     const client = useClient()
 
-    const [controlPane, setControlPane] = useControlPane()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { viewStateHook, sortStateHook } = useControlPane()
+    const [viewState] = viewStateHook
 
     const [busses, setBusses] = useState<Bus[]>()
     const [stops, setStops] = useState<Stop[]>()
 
-    const updateBusses = () => {
+    const updateBusses = useCallback(() => {
         client.getBusses()
             .then(setBusses)
-    }
+    }, [client])
 
-    const updateStops = () => {
+    const updateStops = useCallback(() => {
         client.getStops()
             .then(setStops)
-    }
+    }, [client])
 
     useEffect(() => {
         updateBusses()
@@ -40,55 +42,33 @@ export function MainPage(props: MainPageProps) {
 
         const intervalId = setInterval(updateBusses, 60 * 1000);
         return () => clearInterval(intervalId);
-    }, [])
+    }, [updateBusses, updateStops])
 
     return (
         <div style={{ width: '100vw', height: '100vh' }}>
             {location && <Flex className={css.container} direction='column'>
                 <Map location={props.location} busses={busses ?? []} stops={stops ?? []} />
-                <div style={{ maxHeight: '40%', position: 'relative' }}>
-                    {controlPane.type === 'nearby-departures' && <NearbyView location={props.location} />}
-                    {controlPane.type === 'stop' && <>
-                        <StopView stop={controlPane.stop} departures={controlPane.departures} />
+                <div style={{ maxHeight: '50%', position: 'relative' }} className={css.info_box_container}>
+                    <div id="refresh-indicator" className={css.refresh_indicator}></div>
+                    {viewState.type === 'nearby-departures' && <NearbyView location={props.location} />}
+                    {viewState.type === 'stop' && <>
+                        <StopView stop={viewState.stop} departures={viewState.departures} />
                         <BackButton location={props.location} />
                     </>}
-                    {controlPane.type === 'departure' && <>
+                    {viewState.type === 'departure' && <>
                         <RouteView
-                            stop={controlPane.departure.stop}
-                            route={controlPane.departure.route}
-                            direction={controlPane.departure.direction}
+                            stop={viewState.departure.stop}
+                            route={viewState.departure.route}
+                            direction={viewState.departure.direction}
+                            latitude={props.location.coords.latitude}
+                            longitude={props.location.coords.longitude}
                         />
                         <BackButton location={props.location} />
                     </>
                     }
+                    {viewState.type === 'nearby-departures' && <SortButton sortStateHook={sortStateHook} />}
                 </div>
             </Flex>}
         </div>
     )
-}
-
-interface BackButtonProps {
-    location: GeolocationPosition
-}
-
-function BackButton(props: BackButtonProps) {
-    const [_, setControlPane] = useControlPane()
-    return <div style={{
-        position: 'absolute',
-        left: '8px',
-        top: '-16px',
-        width: '32px',
-        height: '32px',
-        zIndex: '999',
-        background: 'forestgreen',
-        borderRadius: '6px',
-    }}
-        onClick={() => setControlPane({
-            type: 'nearby-departures',
-            latitude: props.location.coords.latitude,
-            longitude: props.location.coords.longitude,
-        })}
-    >
-        <SquareArrowLeftIcon width="32px" height="32px" />
-    </div>
 }

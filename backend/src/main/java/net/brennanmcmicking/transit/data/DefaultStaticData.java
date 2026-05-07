@@ -2,7 +2,9 @@ package net.brennanmcmicking.transit.data;
 
 import net.brennanmcmicking.transit.model.Route;
 import net.brennanmcmicking.transit.model.Stop;
+import net.brennanmcmicking.transit.model.StopTime;
 import net.brennanmcmicking.transit.model.TripMetadata;
+import net.brennanmcmicking.transit.routing.Router;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +30,9 @@ public class DefaultStaticData implements StaticData {
     private List<Stop> stopList;
     private Map<String, Route> routes;
     private Map<String, TripMetadata> trips;
+    private List<StopTime> stopTimes;
+
+    private Router router;
 
     public DefaultStaticData() {
         refreshStaticData();
@@ -85,6 +90,8 @@ public class DefaultStaticData implements StaticData {
                             }
                             entry = zip.getNextEntry();
                         }
+                        this.router = new Router(stopTimes);
+                        LOG.info("done processing, Router created");
                         lastRefresh = Instant.now();
                     }
                 } catch (MalformedURLException ex) {
@@ -96,12 +103,13 @@ public class DefaultStaticData implements StaticData {
         }
     }
 
-    private Map<String, Route> parseRoutesFile(String csv) {
+    private static Map<String, Route> parseRoutesFile(String csv) {
         Map<String, Route> localMap = new ConcurrentHashMap<>();
         List<String> rows = List.of(csv.split("\n"));
         rows
                 .stream()
                 .skip(1)
+                .parallel()
                 .forEach(row -> {
                     List<String> columns = List.of(row.split(","));
                     Route route = Route.builder()
@@ -118,12 +126,13 @@ public class DefaultStaticData implements StaticData {
         return localMap;
     }
 
-    private Map<String, Stop> parseStopsFile(String csv) {
+    private static Map<String, Stop> parseStopsFile(String csv) {
         Map<String, Stop> localMap = new ConcurrentHashMap<>();
         List<String> rows = List.of(csv.split("\n"));
         rows
                 .stream()
                 .skip(1)
+                .parallel()
                 .forEach(row -> {
                     List<String> columns = List.of(row.split(","));
                     String stopId = columns.get(0);
@@ -146,13 +155,14 @@ public class DefaultStaticData implements StaticData {
         return localMap;
     }
 
-    private Map<String, TripMetadata> parseTripsFile(String csv) {
+    private static Map<String, TripMetadata> parseTripsFile(String csv) {
         Map<String, TripMetadata> localMap = new ConcurrentHashMap<>();
         LOG.debug(csv.substring(0, 500));
         List<String> rows = List.of(csv.replace("\r", "").split("\n"));
         rows
                 .stream()
                 .skip(1)
+                .parallel()
                 .forEach(row -> {
                     LOG.debug("row={}", row);
                     List<String> columns = List.of(row.split(","));
@@ -178,6 +188,32 @@ public class DefaultStaticData implements StaticData {
                 });
 
         return localMap;
+    }
+
+    private static List<StopTime> parseStopTimesFile(String csv) {
+        List<StopTime> localList = new ArrayList<>();
+        List<String> rows = List.of(csv.replace("\r", "").split("\n"));
+        rows.stream()
+                .skip(1)
+                .forEach(row -> {
+                    List<String> columns = List.of(row.split(","));
+                    localList.add(StopTime
+                            .builder()
+                            .tripId(columns.get(0))
+                            .arrivalTime(Instant.parse(columns.get(1)))
+                            .departureTime(Instant.parse(columns.get(2)))
+                            .stopId(Integer.parseInt(columns.get(3)))
+                            .stopSequence(Integer.parseInt(columns.get(4)))
+                            .shapeDistanceTraveled(Integer.parseInt(columns.get(5)))
+                            .stopHeadsignUnused(columns.get(6))
+                            .pickupType(Integer.parseInt(columns.get(7)))
+                            .dropOffType(Integer.parseInt(columns.get(8)))
+                            .timePoint(Integer.parseInt(columns.get(9)))
+                            .build()
+                    );
+                });
+
+        return localList;
     }
 
 

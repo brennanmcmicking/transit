@@ -45,3 +45,11 @@
 .read-the-docs {
     color: #888;
 }
+
+.refresh_indicator {
+    position: absolute;
+    top: 0;
+    height: 2px;
+    background: #006715;
+    transition: width 0.25s ease-in-out;
+}

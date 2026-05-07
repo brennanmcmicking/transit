@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 
 
 interface FlexProps {
-    basis?: Property.FlexBasis<any>
+    // basis?: Property.FlexBasis<any>
     direction?: Property.FlexDirection
     flow?: Property.FlexFlow
     grow?: Property.FlexGrow
@@ -17,8 +17,6 @@ interface FlexProps {
 }
 
 export function Flex(props: FlexProps) {
-    console.log(`flexDirection: ${props.direction}`)
-
     return <div
         className={props.className}
         style={{

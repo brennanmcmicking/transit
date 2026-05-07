@@ -1,24 +1,26 @@
-import { divIcon, type LatLngExpression } from "leaflet"
-import { useCallback, useId, useMemo, useRef, useState, type ReactNode, type Ref } from "react"
+import { useCallback, useId, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { Marker } from "react-leaflet"
 import css from "./StopMarker.module.css"
 import { useClickAway } from "../../hooks/useClickAway"
 import StopIcon from "../icons/StopIcon"
-import { Box } from "../system/Box"
 import type { Departure, Stop } from "../../data"
 import { useControlPane } from "../../providers/ControlPaneProvider"
+import { useClient } from "../../util/client"
 
 
 interface StopMarkerProps {
-    position: LatLngExpression
+    latitude: number
+    longitude: number
     stop: Stop
 }
 
 export function StopMarker(props: StopMarkerProps) {
     const id = useId()
     const ref = useRef(null)
-    const [controlPane, setControlPane] = useControlPane()
+    const client = useClient()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { viewStateHook } = useControlPane()
+    const setControlPane = viewStateHook[1]
     const icon = useMemo(() => divIcon({
         html: `<div id="${id}"></div>`,
         className: '',
@@ -43,8 +45,7 @@ export function StopMarker(props: StopMarkerProps) {
 
     const showStopInfo = () => {
         setState('loading')
-        fetch(`http://localhost:8080/v1/departures-for-stop?stopId=${props.stop.id}`)
-            .then(res => res.json())
+        client.getDeparturesForStop(props.stop.id)
             .then((departures: Departure[]) => setControlPane({
                 type: 'stop',
                 stop: props.stop,
@@ -69,28 +70,5 @@ export function StopMarker(props: StopMarkerProps) {
                 click: showStopInfo
             }}
         />
-    </>
-}
-
-interface PopoverProps {
-    open: boolean
-    anchorElement: Ref<HTMLElement>
-    children: ReactNode
-}
-
-function Popover(props: PopoverProps) {
-    return <>
-        <div style={{
-            position: 'relative',
-            display: 'flex',
-            justifyContent: 'center',
-            width: '200px'
-        }}>
-            {props.open && <Box
-                className={props.open ? css.popover : css.popover_hidden}
-            >
-                {props.children}
-            </Box>}
-        </div>
     </>
 }

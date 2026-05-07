@@ -1,6 +1,7 @@
 .user_marker {
     background: #337ccc;
     border: 1px solid #accaea;
+    width: 8px;
     border-radius: 99em;
     aspect-ratio: 1 / 1;
     display: flex;

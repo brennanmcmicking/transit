@@ -1,4 +1,5 @@
 
+export type SortBy = "TIME" | "DISTANCE"
 
 export interface Bus {
     id: string

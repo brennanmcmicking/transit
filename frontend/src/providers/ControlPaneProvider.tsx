@@ -20,7 +20,12 @@ interface DepartureControlPaneState {
 
 type ControlPaneState = NearbyDeparturesControlPaneState | StopControlPaneState | DepartureControlPaneState
 
-type ProviderType = [ControlPaneState, Dispatch<SetStateAction<ControlPaneState>>]
+type SortOptions = "TIME" | "DISTANCE";
+
+export type ProviderType = {
+    viewStateHook: [ControlPaneState, Dispatch<SetStateAction<ControlPaneState>>],
+    sortStateHook: [SortOptions, Dispatch<SetStateAction<SortOptions>>],
+}
 
 const ControlPaneContext = createContext<ProviderType | undefined>(undefined)
 
@@ -30,16 +35,19 @@ interface ControlPaneProviderProps {
 }
 
 export function ControlPaneProvider(props: ControlPaneProviderProps) {
-    const stateHook = useState<ControlPaneState>({
+    const viewStateHook = useState<ControlPaneState>({
         type: 'nearby-departures',
         latitude: props.location.coords.latitude,
         longitude: props.location.coords.longitude,
     })
-    return <ControlPaneContext.Provider value={stateHook}>
+    const sortStateHook = useState<SortOptions>("TIME");
+    return <ControlPaneContext.Provider value={{ viewStateHook, sortStateHook }}>
         {props.children}
     </ControlPaneContext.Provider>
 }
 
+
+// eslint-disable-next-line react-refresh/only-export-components
 export function useControlPane() {
     const ctx = useContext(ControlPaneContext)
 
