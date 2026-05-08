@@ -24,7 +24,6 @@ jobs:
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
-        working-directory: backend
         with:
           tags: brennanmcmicking/transit:main
           push: true
