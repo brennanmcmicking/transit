@@ -1,14 +1,11 @@
-import { Map as LibreMap, MapProvider, type MapRef } from "react-map-gl/maplibre";
+import { Map as LibreMap, type MapRef } from "react-map-gl/maplibre";
 import type { Bus, Stop } from "../../data";
-// import Map as LibreMap from "react-map-gl/maplibre";
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useRef } from "react";
 import { BusMarker } from "./BusMarker";
 import { UserMarker } from "./UserMarker";
 import { useClient } from "../../util/client";
 import { useControlPane } from "../../providers/ControlPaneProvider";
-// import { StopMarker } from "./StopMarker";
-// import { UserMarker } from "./UserMarker";
 
 interface MapProps {
     location: GeolocationPosition

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import type { DepartureAndDistance, Route, SortBy, Stop } from "../../data"
+import type { DepartureAndDistance, Route, Stop } from "../../data"
 import { DepartureCard } from "./DepartureCard"
 import { useClient } from "../../util/client"
 
